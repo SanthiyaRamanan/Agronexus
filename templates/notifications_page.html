@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Notifications - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div><h1>🔔 Notifications</h1><p>All your alerts and updates</p></div>
+    <button class="btn btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
+</div>
+<div class="card" id="fullNotifList">
+    <div style="text-align:center;padding:30px;color:#6b8c76">Loading...</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadFull() {
+    const res  = await fetch('/api/notifications?limit=50');
+    const data = await res.json();
+    const typeIcon = {bid:'🔨',sale:'💳',scheme:'🏛️',system:'⚙️',weather:'🌦️',crm:'♻️'};
+    if (!(data.notifications||[]).length) {
+        document.getElementById('fullNotifList').innerHTML = '<div style="text-align:center;padding:50px;color:#6b8c76">🎉 You\'re all caught up!</div>';
+        return;
+    }
+    document.getElementById('fullNotifList').innerHTML = data.notifications.map(n => `
+        <div class="notif-item ${n.is_read?'':'unread'}" onclick="markRead(${n.id},this)" style="padding:14px 18px;border-bottom:1px solid #f0f7f3;display:flex;gap:14px;align-items:flex-start;cursor:pointer;${n.is_read?'':'background:#f0f9f4'}">
+            <div style="width:40px;height:40px;border-radius:50%;background:#e8f7ef;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${typeIcon[n.type]||'📢'}</div>
+            <div style="flex:1">
+                <div style="font-size:14px;line-height:1.6;${n.is_read?'':'font-weight:600'}">${n.message}</div>
+                <div style="font-size:12px;color:#6b8c76;margin-top:3px">${timeAgo(n.created_at)}</div>
+            </div>
+            ${!n.is_read?'<div style="width:8px;height:8px;background:#2d9e6b;border-radius:50%;margin-top:6px;flex-shrink:0"></div>':''}
+        </div>`).join('');
+}
+loadFull();
+</script>
+{% endblock %}

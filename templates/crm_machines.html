@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}CRM Machines - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1>♻️ CRM Machines</h1>
+        <p>Crop Residue Management — rent machines to manage stubble & reduce pollution</p>
+    </div>
+    <a href="{{ url_for('add_crm') }}" class="btn btn-primary"><i class="fas fa-plus"></i> List CRM Machine</a>
+</div>
+
+<!-- WHY CRM -->
+<div style="background:linear-gradient(135deg,#1a4a2e,#0d3320);border-radius:16px;padding:20px;color:#fff;margin-bottom:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
+    <div style="text-align:center">
+        <div style="font-size:36px;margin-bottom:6px">🚫</div>
+        <div style="font-weight:700;font-size:13px">Stop Stubble Burning</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:4px">Avoid ₹2500–15000 fine per incident</div>
+    </div>
+    <div style="text-align:center">
+        <div style="font-size:36px;margin-bottom:6px">🌱</div>
+        <div style="font-weight:700;font-size:13px">Enrich Your Soil</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:4px">Add 15-20 kg N + organic matter</div>
+    </div>
+    <div style="text-align:center">
+        <div style="font-size:36px;margin-bottom:6px">💰</div>
+        <div style="font-weight:700;font-size:13px">Save on Fertilizer</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:4px">Reduce input cost by ₹3000–5000/acre</div>
+    </div>
+    <div style="text-align:center">
+        <div style="font-size:36px;margin-bottom:6px">🏛️</div>
+        <div style="font-weight:700;font-size:13px">80% Subsidy Available</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:4px">Under CRM scheme for SC/ST farmers</div>
+    </div>
+</div>
+
+<!-- MACHINE TYPES INFO -->
+<div class="grid-3" style="margin-bottom:20px">
+    {% for m in [
+        ('Happy Seeder','🚜','Seeds wheat directly into paddy stubble without burning. Saves ₹2000-3000/acre in field prep.','₹400-600/acre'),
+        ('Super SMS (Straw Management)','⚙️','Spreads paddy straw uniformly. Used with combine harvesters. Very fast operation.','₹150-250/acre'),
+        ('Rotavator','🔄','Mixes crop residue into soil. Improves soil health and moisture retention.','₹300-450/acre'),
+        ('Baler','📦','Converts loose straw into compact bales. Bales sold to paper/biomass industry.','₹250-400/acre'),
+        ('Mulcher / Shredder','✂️','Shreds crop residue into fine pieces. Best for vegetable crop residue management.','₹350-500/acre'),
+        ('Reversible Plough','🔧','Deep plough to bury residue. Improves soil aeration and drainage.','₹400-600/acre'),
+    ] %}
+    <div class="card" style="border-left:4px solid #2d9e6b">
+        <div style="font-size:32px;margin-bottom:10px">{{ m[1] }}</div>
+        <h4 style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:8px">{{ m[0] }}</h4>
+        <p style="font-size:13px;color:#6b8c76;line-height:1.6;margin-bottom:10px">{{ m[2] }}</p>
+        <div style="background:#e8f7ef;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:#1a5c38">
+            💰 Rate: {{ m[3] }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- AVAILABLE CRM MACHINES -->
+<div class="card">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:16px">🔍 Available CRM Machines Near You</h3>
+    {% if crm_machines %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        {% for m in crm_machines %}
+        <div class="card" style="border:1px solid #d4e8da;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                <div>
+                    <div style="font-size:28px;margin-bottom:6px">♻️</div>
+                    <h4 style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700">{{ m.name }}</h4>
+                    <span class="badge badge-green">{{ m.crm_type }}</span>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:20px;font-weight:800;color:#2d9e6b">₹{{ m.rate_per_acre }}/acre</div>
+                    <div style="font-size:11px;color:#6b8c76">or ₹{{ m.rate_per_hr }}/hr</div>
+                </div>
+            </div>
+            <div style="font-size:13px;color:#6b8c76;margin-bottom:10px">
+                👤 {{ m.owner_name }} · 📍 {{ m.location }}
+            </div>
+            {% if m.suitable_crops %}
+            <div style="margin-bottom:10px">
+                <span style="font-size:11px;color:#6b8c76;font-weight:700">SUITABLE FOR:</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                    {% for crop in m.suitable_crops.split(',') %}
+                    <span class="badge badge-green" style="font-size:10px">{{ crop.strip() }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <input type="number" id="crm_acres_{{ m.id }}" placeholder="Acres" min="0.5" step="0.5" class="form-control" style="width:90px;padding:8px">
+                <input type="date" id="crm_date_{{ m.id }}" class="form-control" style="flex:1;padding:8px">
+            </div>
+            <button class="btn btn-primary btn-block btn-sm" onclick="bookCRM({{ m.id }}, {{ m.rate_per_acre }})">
+                <i class="fas fa-calendar-check"></i> Book Now
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:50px;color:#6b8c76">
+        <div style="font-size:50px;margin-bottom:14px">♻️</div>
+        <h3>No CRM machines listed yet</h3>
+        <p style="margin:8px 0 20px">Be the first to list a CRM machine and earn rental income!</p>
+        <a href="{{ url_for('add_crm') }}" class="btn btn-primary">List CRM Machine</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SUBSIDY INFO -->
+<div class="card" style="margin-top:20px;background:linear-gradient(135deg,#fff8e6,#fff3cc);border:1px solid #f0d080">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px;color:#7a5000">🏛️ CRM Subsidy — Don't Miss Out!</h3>
+    <div class="grid-2">
+        <div>
+            <div style="font-size:14px;line-height:1.8;color:#5a3a00">
+                <div>✅ <strong>Individual farmers:</strong> 50% subsidy on purchase</div>
+                <div>✅ <strong>SC/ST farmers:</strong> 80% subsidy on purchase</div>
+                <div>✅ <strong>FPO/Co-operatives:</strong> 80% subsidy for custom hiring centres</div>
+                <div>✅ <strong>Annual maintenance:</strong> ₹5000 grant per machine</div>
+            </div>
+        </div>
+        <div>
+            <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:14px;font-size:13px;color:#5a3a00">
+                <strong>How to apply:</strong><br>
+                1. Visit agrimachinery.nic.in<br>
+                2. Register with Aadhaar + Land records<br>
+                3. Select CRM machine type<br>
+                4. Get subsidy directly in bank account
+                <br><br>
+                <a href="https://agrimachinery.nic.in" target="_blank" class="btn btn-amber btn-sm">Apply for Subsidy →</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Set default dates
+document.querySelectorAll('[id^="crm_date_"]').forEach(el => {
+    const d = new Date(); d.setDate(d.getDate()+1);
+    el.value = d.toISOString().split('T')[0];
+});
+
+async function bookCRM(machineId, ratePerAcre) {
+    const acres = document.getElementById('crm_acres_' + machineId).value;
+    const date  = document.getElementById('crm_date_' + machineId).value;
+    if (!acres || !date) return showToast('Enter acres and date', '', 'warning');
+    const total = (parseFloat(acres) * ratePerAcre).toFixed(2);
+    const fd = new FormData();
+    fd.append('crm_id', machineId); fd.append('acres', acres); fd.append('booking_date', date);
+    const res  = await fetch('/book_crm', {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.success) showToast('CRM Booked! 🎉', `Total: ₹${total} for ${acres} acres`, 'success');
+    else showToast(data.message || 'Booking failed', '', 'error');
+}
+</script>
+{% endblock %}

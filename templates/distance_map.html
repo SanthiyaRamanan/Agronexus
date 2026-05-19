@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Distance Map - AgroNexus{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🗺️ Distance Map</h1>
+    <p>Find buyers/sellers near you and calculate distance</p>
+</div>
+
+<div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px">📍 Calculate Distance</h3>
+        <div class="form-group">
+            <label class="form-label">Your Location</label>
+            <div style="display:flex;gap:8px">
+                <input type="text" id="fromLocation" class="form-control" placeholder="e.g. Coimbatore, Tamil Nadu">
+                <button class="btn btn-secondary btn-sm" onclick="useMyLocation()" style="white-space:nowrap">
+                    <i class="fas fa-crosshairs"></i> GPS
+                </button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Destination</label>
+            <input type="text" id="toLocation" class="form-control" placeholder="e.g. Chennai, Tamil Nadu">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="calculateDistance()">
+            <i class="fas fa-route"></i> Calculate Distance
+        </button>
+        <div id="distanceResult" style="display:none;margin-top:14px;background:#e8f7ef;border-radius:10px;padding:14px">
+            <div style="font-family:'Sora',sans-serif;font-size:22px;font-weight:800;color:#1a5c38" id="distKm"></div>
+            <div style="color:#6b8c76;font-size:13px" id="distTime"></div>
+            <div style="color:#6b8c76;font-size:13px;margin-top:4px" id="distTip"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px">👥 Nearby Users</h3>
+        <div class="form-group">
+            <label class="form-label">Search Radius (km)</label>
+            <select id="radiusKm" class="form-control" onchange="loadNearbyUsers()">
+                <option value="50">Within 50 km</option>
+                <option value="100" selected>Within 100 km</option>
+                <option value="200">Within 200 km</option>
+                <option value="500">Within 500 km</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Filter by Role</label>
+            <select id="roleFilter" class="form-control" onchange="loadNearbyUsers()">
+                <option value="">All Users</option>
+                <option value="buyer">Buyers</option>
+                <option value="farmer">Farmers</option>
+                <option value="rental">Equipment Owners</option>
+            </select>
+        </div>
+        <div id="nearbyList" style="max-height:180px;overflow-y:auto;font-size:13px">
+            <div style="text-align:center;color:#6b8c76;padding:20px">Click Calculate to find nearby users</div>
+        </div>
+    </div>
+</div>
+
+<!-- MAP -->
+<div class="card">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px">🗺️ Live Map</h3>
+    <div style="border-radius:12px;overflow:hidden;border:1px solid #d4e8da">
+        <div id="distanceMap" style="height:420px;width:100%"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
+        <span>🟢 Farmers</span>
+        <span>🔵 Buyers</span>
+        <span>🟡 Equipment Owners</span>
+        <span>🔴 Your Location</span>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let map, fromMarker, toMarker, routeLine;
+let myLat = 11.0168, myLng = 76.9558; // default Coimbatore
+
+// Init map
+map = L.map('distanceMap').setView([20.5937, 78.9629], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+// Custom markers
+const icons = {
+    farmer: L.divIcon({className:'',html:'<div style="background:#2d9e6b;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">👨‍🌾</div>',iconSize:[32,32],iconAnchor:[16,16]}),
+    buyer:  L.divIcon({className:'',html:'<div style="background:#065a82;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🏪</div>',iconSize:[32,32],iconAnchor:[16,16]}),
+    rental: L.divIcon({className:'',html:'<div style="background:#f0a500;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🚜</div>',iconSize:[32,32],iconAnchor:[16,16]}),
+    you:    L.divIcon({className:'',html:'<div style="background:#e05252;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 12px rgba(0,0,0,0.4);border:3px solid #fff">📍</div>',iconSize:[36,36],iconAnchor:[18,18]}),
+};
+
+// Fetch and plot users from DB
+async function loadNearbyUsers() {
+    try {
+        const res = await fetch('/api/map_users');
+        const data = await res.json();
+        const roleF = document.getElementById('roleFilter').value;
+        const radius = parseInt(document.getElementById('radiusKm').value);
+        const users = data.users.filter(u => !roleF || u.role === roleF);
+
+        // Clear old markers
+        map.eachLayer(l => { if (l._isUserMarker) map.removeLayer(l); });
+
+        // Add user markers
+        users.forEach(u => {
+            if (!u.lat || !u.lng) return;
+            const dist = haversine(myLat, myLng, u.lat, u.lng);
+            if (dist > radius) return;
+            const ic = icons[u.role] || icons.farmer;
+            const m = L.marker([u.lat, u.lng], {icon: ic}).addTo(map);
+            m._isUserMarker = true;
+            m.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:160px">
+                <strong>${u.name}</strong><br>
+                <span style="color:#6b8c76;font-size:12px">${u.role} · ${u.location||''}</span><br>
+                <span style="color:#2d9e6b;font-weight:700;font-size:13px">📍 ${dist.toFixed(1)} km away</span>
+            </div>`);
+        });
+
+        // Update nearby list
+        const sorted = users
+            .filter(u => u.lat && u.lng)
+            .map(u => ({...u, dist: haversine(myLat, myLng, u.lat, u.lng)}))
+            .filter(u => u.dist <= radius)
+            .sort((a,b) => a.dist - b.dist)
+            .slice(0, 10);
+
+        document.getElementById('nearbyList').innerHTML = sorted.length
+            ? sorted.map(u => `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f7f3">
+                    <div>
+                        <div style="font-weight:600">${u.name}</div>
+                        <div style="color:#6b8c76;font-size:11px">${u.role} · ${u.location||'Unknown'}</div>
+                    </div>
+                    <span style="color:#2d9e6b;font-weight:700;font-size:12px">${u.dist.toFixed(1)} km</span>
+                </div>`).join('')
+            : '<div style="text-align:center;color:#6b8c76;padding:16px">No users found in this radius</div>';
+    } catch(e) { console.log(e); }
+}
+
+// Haversine distance formula
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Geocode using Nominatim (free, no API key needed)
+async function geocode(place) {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`);
+    const data = await res.json();
+    if (!data.length) throw new Error('Location not found');
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), name: data[0].display_name };
+}
+
+async function calculateDistance() {
+    const from = document.getElementById('fromLocation').value.trim();
+    const to   = document.getElementById('toLocation').value.trim();
+    if (!from || !to) return showToast('Enter both locations', '', 'warning');
+
+    try {
+        showToast('Calculating...', 'Finding route on map', 'info');
+        const [f, t] = await Promise.all([geocode(from), geocode(to)]);
+        const dist = haversine(f.lat, f.lng, t.lat, t.lng);
+        const timeHr = dist / 60;
+
+        myLat = f.lat; myLng = f.lng;
+
+        // Remove old route
+        if (routeLine) map.removeLayer(routeLine);
+        if (fromMarker) map.removeLayer(fromMarker);
+        if (toMarker) map.removeLayer(toMarker);
+
+        fromMarker = L.marker([f.lat, f.lng], {icon: icons.you}).addTo(map).bindPopup(`📍 ${from}`).openPopup();
+        toMarker   = L.marker([t.lat, t.lng], {icon: icons.buyer}).addTo(map).bindPopup(`🏪 ${to}`);
+        routeLine  = L.polyline([[f.lat,f.lng],[t.lat,t.lng]], {color:'#2d9e6b', weight:3, dashArray:'8,8'}).addTo(map);
+        map.fitBounds(routeLine.getBounds(), {padding:[40,40]});
+
+        document.getElementById('distanceResult').style.display = 'block';
+        document.getElementById('distKm').textContent = `📏 ${dist.toFixed(1)} km`;
+        document.getElementById('distTime').textContent = `🕐 Estimated travel: ${timeHr < 1 ? Math.round(timeHr*60)+'min' : timeHr.toFixed(1)+'hr'} by road`;
+        document.getElementById('distTip').textContent = `🚛 Freight cost estimate: ₹${Math.round(dist * 8)} - ₹${Math.round(dist * 12)}`;
+
+        loadNearbyUsers();
+    } catch(e) {
+        showToast('Location not found', 'Try a more specific location name', 'error');
+    }
+}
+
+function useMyLocation() {
+    if (!navigator.geolocation) return showToast('GPS not supported','','error');
+    navigator.geolocation.getCurrentPosition(pos => {
+        myLat = pos.coords.latitude; myLng = pos.coords.longitude;
+        document.getElementById('fromLocation').value = `${myLat.toFixed(4)}, ${myLng.toFixed(4)}`;
+        showToast('Location found!', 'GPS coordinates set', 'success');
+        loadNearbyUsers();
+    }, () => showToast('Could not get location','','error'));
+}
+
+// Load users on page load
+loadNearbyUsers();
+</script>
+{% endblock %}

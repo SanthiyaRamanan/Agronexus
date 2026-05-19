@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}AI Tools - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🤖 AI-Powered Agriculture Tools</h1>
+    <p>Intelligent tools to maximize your farm productivity and income</p>
+</div>
+
+<!-- TABS -->
+<div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+    {% for tab in [('price','📈 Price Prediction'),('crop','🌾 Crop Advisor'),('quality','⭐ Quality Grader'),('scheme','🏛️ Scheme Matcher')] %}
+    <button onclick="showTab('{{ tab[0] }}')" id="tab-{{ tab[0] }}" class="btn {% if loop.first %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:30px">
+        {{ tab[1] }}
+    </button>
+    {% endfor %}
+</div>
+
+<!-- PRICE PREDICTION TAB -->
+<div id="panel-price" class="card">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:6px">📈 AI Crop Price Predictor</h3>
+    <p style="color:#6b8c76;margin-bottom:20px;font-size:14px">ML model trained on historical market data to forecast next 7-day prices</p>
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <select id="priceCrop" class="form-control" style="max-width:220px">
+            {% for c in ['Tomato','Rice','Wheat','Onion','Potato','Cotton','Soybean','Maize','Groundnut','Chilli','Turmeric','Mustard'] %}
+            <option>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" onclick="predictPrice()"><i class="fas fa-brain"></i> Predict</button>
+    </div>
+    <div id="priceResult" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">
+            <div style="background:#f0f7f3;border-radius:12px;padding:18px;text-align:center">
+                <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase">Current</div>
+                <div id="pr-current" style="font-size:24px;font-weight:800;color:#1a5c38">-</div>
+                <div style="font-size:11px;color:#6b8c76">per kg</div>
+            </div>
+            <div style="background:#e8f7ef;border-radius:12px;padding:18px;text-align:center;border:2px solid #4ecb8d">
+                <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase">AI Forecast</div>
+                <div id="pr-pred" style="font-size:24px;font-weight:800;color:#2d9e6b">-</div>
+                <div style="font-size:11px;color:#6b8c76">per kg</div>
+            </div>
+            <div style="background:#f0f7f3;border-radius:12px;padding:18px;text-align:center">
+                <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase">Range</div>
+                <div id="pr-range" style="font-size:16px;font-weight:700;color:#1a5c38">-</div>
+                <div style="font-size:11px;color:#6b8c76">min - max</div>
+            </div>
+            <div style="background:#f0f7f3;border-radius:12px;padding:18px;text-align:center">
+                <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase">Confidence</div>
+                <div id="pr-conf" style="font-size:24px;font-weight:800;color:#f0a500">-</div>
+                <div style="font-size:11px;color:#6b8c76">accuracy</div>
+            </div>
+        </div>
+        <div id="pr-trend" style="padding:12px 16px;border-radius:10px;font-weight:600;font-size:14px"></div>
+    </div>
+</div>
+
+<!-- CROP ADVISOR TAB -->
+<div id="panel-crop" class="card" style="display:none">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:6px">🌾 AI Crop Advisor</h3>
+    <p style="color:#6b8c76;margin-bottom:20px;font-size:14px">Get personalized crop recommendations based on your farm conditions</p>
+    <div class="grid-3" style="margin-bottom:20px">
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Your State</label>
+            <select id="advLocation" class="form-control">
+                {% for s in ['Tamil Nadu','Punjab','Maharashtra','Karnataka','UP','Andhra Pradesh','Gujarat','Rajasthan','MP','Bihar'] %}
+                <option>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Current Season</label>
+            <select id="advSeason" class="form-control">
+                <option value="kharif">Kharif (Jun-Nov)</option>
+                <option value="rabi">Rabi (Nov-Apr)</option>
+                <option value="zaid">Zaid (Apr-Jun)</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Soil Type</label>
+            <select id="advSoil" class="form-control">
+                <option value="loamy">Loamy</option>
+                <option value="clay">Clay</option>
+                <option value="sandy">Sandy</option>
+                <option value="black">Black (Cotton)</option>
+                <option value="red">Red</option>
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:20px" onclick="getCropAdvice()"><i class="fas fa-seedling"></i> Get Recommendations</button>
+    <div id="cropResult" style="display:none">
+        <h4 style="font-family:'Sora',sans-serif;margin-bottom:14px">✅ Recommended Crops</h4>
+        <div id="cropList" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px"></div>
+        <div id="soilTip" style="background:#e8f7ef;border-radius:10px;padding:14px;font-size:14px;color:#1a5c38;margin-bottom:12px"></div>
+        <div id="waterTip" style="background:#e8f0ff;border-radius:10px;padding:14px;font-size:14px;color:#1a205c;margin-bottom:12px"></div>
+        <div id="fertTip" style="background:#fff8e6;border-radius:10px;padding:14px;font-size:14px;color:#7a5000"></div>
+    </div>
+</div>
+
+<!-- QUALITY GRADER TAB -->
+<div id="panel-quality" class="card" style="display:none">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:6px">⭐ AI Quality Grader</h3>
+    <p style="color:#6b8c76;margin-bottom:20px;font-size:14px">Grade your crop quality as A/B/C and get price impact analysis</p>
+    <div class="grid-2" style="margin-bottom:20px">
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Crop Name</label>
+            <select id="qCrop" class="form-control">
+                {% for c in ['Tomato','Rice','Wheat','Onion','Potato','Cotton','Soybean'] %}
+                <option>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:20px" onclick="gradeQuality()"><i class="fas fa-star"></i> Grade My Crop</button>
+    <div id="qualityResult" style="display:none">
+        <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">
+            <div id="gradeBadge" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-size:36px;font-weight:900;color:#fff"></div>
+            <div>
+                <div id="gradeLabel" style="font-family:'Sora',sans-serif;font-size:20px;font-weight:800"></div>
+                <div id="gradeScore" style="color:#6b8c76;font-size:14px"></div>
+                <div id="gradeImpact" style="font-weight:700;font-size:16px;margin-top:4px"></div>
+            </div>
+        </div>
+        <h4 style="margin-bottom:10px">💡 Recommendations</h4>
+        <div id="gradeRecs"></div>
+    </div>
+</div>
+
+<!-- SCHEME MATCHER TAB -->
+<div id="panel-scheme" class="card" style="display:none">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:6px">🏛️ Government Scheme Matcher</h3>
+    <p style="color:#6b8c76;margin-bottom:20px;font-size:14px">AI matches your profile to all eligible government schemes instantly</p>
+    <div class="grid-2" style="margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Your State</label>
+            <select id="schState" class="form-control">
+                {% for s in ['Tamil Nadu','Punjab','Maharashtra','Karnataka','UP','Andhra Pradesh','Gujarat','Rajasthan','MP','Bihar','All States'] %}
+                <option>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Main Crop</label>
+            <select id="schCrop" class="form-control">
+                {% for c in ['Rice','Wheat','Cotton','Soybean','Groundnut','Sugarcane','Vegetables','All Crops'] %}
+                <option>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Land Size (Acres)</label>
+            <input type="number" id="schLand" class="form-control" value="3" min="0.5" step="0.5">
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Category</label>
+            <select id="schCat" class="form-control">
+                <option value="General">General</option>
+                <option value="SC">SC (Scheduled Caste)</option>
+                <option value="ST">ST (Scheduled Tribe)</option>
+                <option value="OBC">OBC</option>
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:20px" onclick="matchSchemes()"><i class="fas fa-search"></i> Find My Schemes</button>
+    <div id="schemeResult" style="display:none">
+        <h4 style="font-family:'Sora',sans-serif;margin-bottom:14px">✅ You are eligible for <span id="schemeCount"></span> schemes:</h4>
+        <div id="schemeList"></div>
+    </div>
+</div>
+
+<script>
+    function showTab(name) {
+        ['price','crop','quality','scheme'].forEach(t => {
+            document.getElementById('panel-' + t).style.display = t === name ? 'block' : 'none';
+            document.getElementById('tab-' + t).className = 'btn ' + (t === name ? 'btn-primary' : 'btn-secondary');
+            document.getElementById('tab-' + t).style.borderRadius = '30px';
+        });
+    }
+
+    async function predictPrice() {
+        const crop = document.getElementById('priceCrop').value;
+        const res = await fetch('/api/predict_price', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({crop})});
+        const d = await res.json();
+        document.getElementById('priceResult').style.display = 'block';
+        document.getElementById('pr-current').textContent = '₹' + d.current_price;
+        document.getElementById('pr-pred').textContent = '₹' + d.predicted_price;
+        document.getElementById('pr-range').textContent = '₹' + d.min_price + ' - ₹' + d.max_price;
+        document.getElementById('pr-conf').textContent = d.confidence + '%';
+        const trendEl = document.getElementById('pr-trend');
+        trendEl.textContent = d.trend === 'rising' ? '📈 Price trend is RISING — Good time to hold stock for a few more days!' : '📉 Price trend is FALLING — Consider selling soon for better returns.';
+        trendEl.style.background = d.trend === 'rising' ? '#e8f7ef' : '#fde8e8';
+        trendEl.style.color = d.trend === 'rising' ? '#1a5c38' : '#e05252';
+    }
+
+    async function getCropAdvice() {
+        const res = await fetch('/api/crop_advice', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:document.getElementById('advLocation').value,season:document.getElementById('advSeason').value,soil_type:document.getElementById('advSoil').value})});
+        const d = await res.json();
+        document.getElementById('cropResult').style.display = 'block';
+        document.getElementById('cropList').innerHTML = d.recommended_crops.map((c,i) =>
+            `<span style="background:${i===0?'#2d9e6b':'#e8f7ef'};color:${i===0?'#fff':'#1a5c38'};padding:8px 18px;border-radius:30px;font-weight:700;font-size:14px">${i===0?'⭐ ':''} ${c}</span>`
+        ).join('');
+        document.getElementById('soilTip').innerHTML = '🌱 <strong>Soil Tip:</strong> ' + d.soil_tip;
+        document.getElementById('waterTip').innerHTML = '💧 <strong>Irrigation:</strong> ' + d.watering_advice;
+        document.getElementById('fertTip').innerHTML = '🧪 <strong>Fertilizer:</strong> ' + d.fertilizer_tip;
+    }
+
+    async function gradeQuality() {
+        const crop = document.getElementById('qCrop').value;
+        const res = await fetch('/api/grade_quality', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({crop,params:{}})});
+        const d = await res.json();
+        document.getElementById('qualityResult').style.display = 'block';
+        const badge = document.getElementById('gradeBadge');
+        badge.textContent = d.grade;
+        badge.style.background = d.color;
+        document.getElementById('gradeLabel').textContent = d.grade_label;
+        document.getElementById('gradeScore').textContent = 'Quality Score: ' + d.score + '/100';
+        document.getElementById('gradeImpact').textContent = 'Price Impact: ' + d.price_impact;
+        document.getElementById('gradeImpact').style.color = d.grade === 'A' ? '#2d9e6b' : d.grade === 'B' ? '#f0a500' : '#e05252';
+        document.getElementById('gradeRecs').innerHTML = d.recommendations.map(r =>
+            `<div style="background:#f9fcfa;border-radius:10px;padding:12px 14px;margin-bottom:8px;font-size:14px;border-left:3px solid #4ecb8d">✓ ${r}</div>`
+        ).join('');
+    }
+
+    async function matchSchemes() {
+        const res = await fetch('/api/match_schemes', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:document.getElementById('schState').value,crop:document.getElementById('schCrop').value,land_size:document.getElementById('schLand').value,category:document.getElementById('schCat').value})});
+        const d = await res.json();
+        document.getElementById('schemeResult').style.display = 'block';
+        document.getElementById('schemeCount').textContent = d.schemes.length;
+        document.getElementById('schemeList').innerHTML = d.schemes.map(s =>
+            `<div style="background:#fff;border:1px solid #d4e8da;border-radius:12px;padding:18px;margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                    <h4 style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700">${s.name}</h4>
+                    <a href="${s.url}" target="_blank" class="btn btn-secondary btn-sm">Apply →</a>
+                </div>
+                <div style="background:#e8f7ef;border-radius:8px;padding:10px;font-size:13px;color:#1a5c38;font-weight:600;margin-bottom:8px">💰 ${s.benefits}</div>
+                <div style="font-size:13px;color:#6b8c76">${s.description}</div>
+            </div>`
+        ).join('');
+    }
+
+    // Auto-load price on mount
+    predictPrice();
+</script>
+{% endblock %}

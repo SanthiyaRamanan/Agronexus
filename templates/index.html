@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}AgroNexus - Smart Agriculture Platform for India{% endblock %}
+{% block content %}
+<style>
+    .main { margin-left: 0 !important; padding: 0 !important; }
+    .hero {
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #0d3320 0%, #1a5c38 50%, #2d7a50 100%);
+        position: relative; overflow: hidden; text-align: center; padding: 40px 24px;
+    }
+    .hero::before {
+        content: ''; position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234ecb8d' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .hero-content { position: relative; max-width: 720px; }
+    .hero-badge { display: inline-block; background: rgba(78,203,141,0.2); border: 1px solid rgba(78,203,141,0.4);
+        color: #4ecb8d; border-radius: 30px; padding: 6px 18px; font-size: 13px; font-weight: 700;
+        letter-spacing: 0.5px; margin-bottom: 24px; }
+    .hero h1 { font-family: 'Sora', sans-serif; font-size: clamp(36px, 6vw, 64px); font-weight: 800;
+        color: #fff; line-height: 1.1; margin-bottom: 20px; }
+    .hero h1 span { color: #4ecb8d; }
+    .hero p { font-size: 18px; color: rgba(255,255,255,0.75); max-width: 520px; margin: 0 auto 36px; line-height: 1.7; }
+    .hero-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hero-btn-primary { background: #4ecb8d; color: #0d3320; padding: 16px 36px; border-radius: 12px;
+        font-weight: 800; font-size: 16px; text-decoration: none; transition: all 0.2s; }
+    .hero-btn-primary:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(78,203,141,0.4); }
+    .hero-btn-outline { border: 2px solid rgba(255,255,255,0.3); color: #fff; padding: 16px 36px;
+        border-radius: 12px; font-weight: 700; font-size: 16px; text-decoration: none; transition: all 0.2s; }
+    .hero-btn-outline:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
+
+    .features-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .section-title { font-family: 'Sora', sans-serif; font-size: 36px; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    .section-sub { text-align: center; color: #6b8c76; margin-bottom: 50px; font-size: 16px; }
+
+    .feature-card {
+        background: #fff; border-radius: 18px; padding: 32px; border: 1px solid #d4e8da;
+        transition: all 0.3s; text-align: center;
+    }
+    .feature-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(0,0,0,0.1); border-color: #4ecb8d; }
+    .feature-icon { width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center;
+        justify-content: center; font-size: 30px; margin: 0 auto 18px; }
+    .feature-card h3 { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p { color: #6b8c76; font-size: 14px; line-height: 1.7; }
+
+    .stats-bar { background: linear-gradient(135deg, #0d3320, #1a5c38); padding: 48px 40px; }
+    .stats-bar-inner { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
+    .stat-item .num { font-family: 'Sora', sans-serif; font-size: 38px; font-weight: 800; color: #4ecb8d; }
+    .stat-item .lbl { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 4px; }
+
+    .cta-section { background: #f0f7f3; padding: 72px 40px; text-align: center; }
+    .role-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1100px; margin: 36px auto 0; }
+    .role-card { background: #fff; border-radius: 16px; padding: 28px; border: 2px solid #d4e8da;
+        cursor: pointer; transition: all 0.2s; text-decoration: none; display: block; color: inherit; }
+    .role-card:hover { border-color: #2d9e6b; box-shadow: 0 8px 30px rgba(45,158,107,0.15); transform: translateY(-3px); }
+    .role-card .icon { font-size: 40px; margin-bottom: 14px; }
+    .role-card h4 { font-family: 'Sora', sans-serif; font-weight: 700; margin-bottom: 8px; }
+    .role-card p { font-size: 13px; color: #6b8c76; }
+
+    footer { background: #0d3320; color: rgba(255,255,255,0.5); text-align: center; padding: 28px; font-size: 13px; }
+    footer a { color: #4ecb8d; text-decoration: none; }
+
+    @media(max-width:768px) {
+        .stats-bar-inner, .role-cards { grid-template-columns: 1fr 1fr; }
+        .features-section { padding: 50px 20px; }
+        .grid-3 { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">🇮🇳 Built for Indian Farmers</div>
+        <h1>Smart Agriculture<br>for <span>Every Farmer</span></h1>
+        <p>From field to market — AI-powered crop marketplace, equipment rental, government schemes, and real-time price intelligence. All in one platform.</p>
+        <div class="hero-btns">
+            <a href="{{ url_for('register') }}" class="hero-btn-primary">Get Started Free →</a>
+            <a href="{{ url_for('marketplace') }}" class="hero-btn-outline">Browse Marketplace</a>
+        </div>
+    </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+    <div class="stats-bar-inner">
+        <div class="stat-item"><div class="num">10K+</div><div class="lbl">Active Farmers</div></div>
+        <div class="stat-item"><div class="num">₹2.4Cr</div><div class="lbl">Trade Volume</div></div>
+        <div class="stat-item"><div class="num">500+</div><div class="lbl">Equipment Listed</div></div>
+        <div class="stat-item"><div class="num">28</div><div class="lbl">States Covered</div></div>
+    </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features-section">
+    <h2 class="section-title">Everything a Farmer Needs</h2>
+    <p class="section-sub">One platform to manage your entire agricultural journey</p>
+
+    <div class="grid-3">
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#e8f7ef"><span>🛒</span></div>
+            <h3>Live Crop Marketplace</h3>
+            <p>Sell directly to buyers with live auction bidding, real-time price comparison, and transparent transactions — no middlemen.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#fff8e6"><span>🤖</span></div>
+            <h3>AI Price Prediction</h3>
+            <p>Machine learning model forecasts tomorrow's crop prices based on season, weather, and demand patterns with 90%+ accuracy.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#f0e8ff"><span>🚜</span></div>
+            <h3>Smart Equipment Rental</h3>
+            <p>Rent tractors, harvesters, sprayers by the hour. GPS-tracked, pay-per-use pricing makes farming affordable for small farmers.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#fde8e8"><span>🌾</span></div>
+            <h3>AI Crop Advisory</h3>
+            <p>Get personalized crop recommendations based on your location, soil type, and season. Maximize yield with data-driven decisions.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#e8f7ef"><span>🏛️</span></div>
+            <h3>Govt Scheme Matcher</h3>
+            <p>AI instantly matches you with all eligible government schemes — PM-KISAN, PMFBY, KCC loans — and guides you to apply.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:#fff8e6"><span>📊</span></div>
+            <h3>Quality Grading</h3>
+            <p>AI-powered crop quality assessment grades your produce as A/B/C and recommends best markets for maximum returns.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ROLE SELECT -->
+<section class="cta-section">
+    <h2 class="section-title">Who Are You?</h2>
+    <p class="section-sub">Get started with a role that fits your needs</p>
+    <div class="role-cards">
+        <a href="{{ url_for('register') }}?role=farmer" class="role-card">
+            <div class="icon">👨‍🌾</div>
+            <h4>Farmer</h4>
+            <p>Sell crops, rent equipment, get AI advice and check govt schemes</p>
+        </a>
+        <a href="{{ url_for('register') }}?role=buyer" class="role-card">
+            <div class="icon">🏪</div>
+            <h4>Buyer / Trader</h4>
+            <p>Buy fresh produce directly from farmers at competitive prices</p>
+        </a>
+        <a href="{{ url_for('register') }}?role=rental" class="role-card">
+            <div class="icon">🚜</div>
+            <h4>Equipment Owner</h4>
+            <p>List your equipment and earn rental income from nearby farmers</p>
+        </a>
+        <a href="{{ url_for('register') }}?role=govt" class="role-card">
+            <div class="icon">🏛️</div>
+            <h4>Government / NGO</h4>
+            <p>Monitor district-level agri data and track subsidy impact</p>
+        </a>
+    </div>
+</section>
+
+<footer>
+    <p>Built by Santhiya R — AgroNexus Platform 2024 &nbsp;|&nbsp; <a href="{{ url_for('register') }}">Register</a> &nbsp;|&nbsp; <a href="{{ url_for('login') }}">Login</a></p>
+</footer>
+{% endblock %}

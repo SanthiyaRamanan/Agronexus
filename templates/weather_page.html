@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Live Weather - AgroNexus{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🌦️ Location-Based Weather</h1>
+    <p>Real-time weather & farming advisories for your exact location</p>
+</div>
+
+<div class="grid-2" style="margin-bottom:20px">
+    <div>
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;gap:10px;margin-bottom:14px">
+                <input type="text" id="weatherLocation" class="form-control" placeholder="Enter your village/city...">
+                <button class="btn btn-primary btn-sm" onclick="getWeather()" style="white-space:nowrap">Search</button>
+                <button class="btn btn-secondary btn-sm" onclick="getMyWeather()" title="Use GPS">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+            </div>
+            <div id="weatherDisplay">
+                <div style="text-align:center;padding:30px;color:#6b8c76">
+                    <div style="font-size:40px;margin-bottom:10px">🌤️</div>
+                    Enter your location or click GPS to get live weather
+                </div>
+            </div>
+        </div>
+        <!-- Farming Advisory -->
+        <div class="card" id="farmingAdvisory" style="display:none">
+            <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px">🌾 Farming Advisory</h3>
+            <div id="advisoryContent"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:14px">🗺️ Weather Map</h3>
+        <div style="border-radius:12px;overflow:hidden">
+            <div id="weatherMap" style="height:380px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 7-day forecast -->
+<div class="card" id="forecastCard" style="display:none">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:16px">📅 7-Day Forecast</h3>
+    <div id="forecastContent" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Init weather map
+const wmap = L.map('weatherMap').setView([20.5937, 78.9629], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(wmap);
+let wmarker;
+
+async function geocode(place) {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`);
+    const data = await res.json();
+    if (!data.length) throw new Error('Not found');
+    return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), name: data[0].display_name};
+}
+
+async function getWeather() {
+    const loc = document.getElementById('weatherLocation').value.trim();
+    if (!loc) return showToast('Enter a location','','warning');
+    try {
+        const g = await geocode(loc);
+        await fetchWeatherData(g.lat, g.lng, g.name);
+    } catch(e) { showToast('Location not found','','error'); }
+}
+
+function getMyWeather() {
+    if (!navigator.geolocation) return showToast('GPS not supported','','error');
+    showToast('Getting location...','','info');
+    navigator.geolocation.getCurrentPosition(async pos => {
+        await fetchWeatherData(pos.coords.latitude, pos.coords.longitude, 'Your Location');
+    }, () => showToast('GPS failed','','error'));
+}
+
+async function fetchWeatherData(lat, lng, locationName) {
+    // Using Open-Meteo (free, no API key needed)
+    try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,apparent_temperature,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum&timezone=auto&forecast_days=7`;
+        const res = await fetch(url);
+        const data = await res.json();
+        renderWeather(data, locationName, lat, lng);
+        renderForecast(data.daily);
+        renderAdvisory(data.current);
+
+        // Update map
+        if (wmarker) wmap.removeLayer(wmarker);
+        wmarker = L.marker([lat, lng]).addTo(wmap)
+            .bindPopup(`<strong>${locationName.split(',')[0]}</strong><br>${data.current.temperature_2m}°C`)
+            .openPopup();
+        wmap.setView([lat, lng], 10);
+    } catch(e) {
+        document.getElementById('weatherDisplay').innerHTML = '<div style="text-align:center;padding:20px;color:#e05252">⚠️ Could not fetch weather. Check internet connection.</div>';
+    }
+}
+
+const WMO_CODES = {
+    0:'☀️ Clear Sky', 1:'🌤️ Mainly Clear', 2:'⛅ Partly Cloudy', 3:'☁️ Overcast',
+    45:'🌫️ Foggy', 48:'🌫️ Icy Fog', 51:'🌦️ Light Drizzle', 53:'🌦️ Moderate Drizzle',
+    61:'🌧️ Slight Rain', 63:'🌧️ Moderate Rain', 65:'🌧️ Heavy Rain',
+    71:'🌨️ Slight Snow', 80:'🌦️ Rain Showers', 81:'🌧️ Heavy Showers',
+    95:'⛈️ Thunderstorm', 99:'⛈️ Heavy Thunderstorm'
+};
+
+function renderWeather(data, name, lat, lng) {
+    const c = data.current;
+    const desc = WMO_CODES[c.weather_code] || '🌤️ Clear';
+    const icon = desc.split(' ')[0];
+    document.getElementById('weatherDisplay').innerHTML = `
+        <div style="text-align:center;margin-bottom:14px">
+            <div style="font-size:13px;color:#6b8c76;margin-bottom:4px">📍 ${name.split(',').slice(0,2).join(',')}</div>
+            <div style="font-size:64px;margin:8px 0">${icon}</div>
+            <div style="font-family:'Sora',sans-serif;font-size:42px;font-weight:800;color:#1a5c38">${Math.round(c.temperature_2m)}°C</div>
+            <div style="color:#6b8c76;font-size:14px;margin-bottom:16px">${desc.split(' ').slice(1).join(' ')} · Feels like ${Math.round(c.apparent_temperature)}°C</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="background:#f0f7f3;border-radius:10px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#6b8c76;text-transform:uppercase;font-weight:700">Humidity</div>
+                <div style="font-size:18px;font-weight:800;color:#1a5c38;margin-top:4px">💧 ${c.relative_humidity_2m}%</div>
+            </div>
+            <div style="background:#f0f7f3;border-radius:10px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#6b8c76;text-transform:uppercase;font-weight:700">Wind</div>
+                <div style="font-size:18px;font-weight:800;color:#1a5c38;margin-top:4px">💨 ${Math.round(c.wind_speed_10m)} km/h</div>
+            </div>
+            <div style="background:#f0f7f3;border-radius:10px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#6b8c76;text-transform:uppercase;font-weight:700">Rain</div>
+                <div style="font-size:18px;font-weight:800;color:#1a5c38;margin-top:4px">🌧️ ${c.precipitation} mm</div>
+            </div>
+        </div>`;
+    document.getElementById('weatherDisplay').style.display = 'block';
+}
+
+function renderForecast(daily) {
+    document.getElementById('forecastCard').style.display = 'block';
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    document.getElementById('forecastContent').innerHTML = daily.time.map((date, i) => {
+        const d = new Date(date), dayName = i===0?'Today':days[d.getDay()];
+        const icon = (WMO_CODES[daily.weather_code[i]]||'🌤️').split(' ')[0];
+        return `<div style="min-width:80px;text-align:center;background:#f9fcfa;border-radius:12px;padding:12px 8px;flex-shrink:0;border:1px solid #d4e8da">
+            <div style="font-size:11px;font-weight:700;color:#6b8c76;text-transform:uppercase">${dayName}</div>
+            <div style="font-size:28px;margin:8px 0">${icon}</div>
+            <div style="font-size:14px;font-weight:800;color:#1a5c38">${Math.round(daily.temperature_2m_max[i])}°</div>
+            <div style="font-size:12px;color:#6b8c76">${Math.round(daily.temperature_2m_min[i])}°</div>
+            <div style="font-size:11px;color:#065a82;margin-top:4px">${daily.precipitation_sum[i]}mm</div>
+        </div>`;
+    }).join('');
+}
+
+function renderAdvisory(current) {
+    document.getElementById('farmingAdvisory').style.display = 'block';
+    const temp = current.temperature_2m, hum = current.relative_humidity_2m;
+    const wind = current.wind_speed_10m, rain = current.precipitation;
+    let tips = [];
+
+    if (temp > 35) tips.push({icon:'🌡️', title:'High Temperature Alert', msg:'Irrigate crops in early morning/evening. Mulch to retain moisture. Avoid midday field work.', color:'#fde8e8'});
+    else if (temp < 10) tips.push({icon:'❄️', title:'Cold Wave Alert', msg:'Cover seedlings with plastic sheets. Delay sowing sensitive crops. Irrigate lightly to prevent frost damage.', color:'#e8f0ff'});
+    else tips.push({icon:'✅', title:'Good Temperature', msg:`${Math.round(temp)}°C is suitable for most field activities.`, color:'#e8f7ef'});
+
+    if (hum > 80) tips.push({icon:'🍄', title:'High Humidity Warning', msg:'Risk of fungal diseases. Apply preventive fungicide spray. Ensure good field drainage.', color:'#fff8e6'});
+    if (wind > 30) tips.push({icon:'💨', title:'High Wind Alert', msg:'Avoid spraying pesticides/fertilizers. Support tall crops. Wind can increase evaporation.', color:'#fff8e6'});
+    if (rain > 10) tips.push({icon:'🌧️', title:'Heavy Rain Advisory', msg:'Avoid fertilizer application. Check drainage channels. Postpone harvesting if possible.', color:'#e8f0ff'});
+    else if (rain === 0 && hum < 40) tips.push({icon:'💧', title:'Irrigation Needed', msg:'Dry conditions detected. Schedule irrigation for the next 24 hours.', color:'#e8f4ff'});
+
+    document.getElementById('advisoryContent').innerHTML = tips.map(t => `
+        <div style="background:${t.color};border-radius:10px;padding:12px 14px;margin-bottom:10px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">${t.icon} ${t.title}</div>
+            <div style="font-size:13px;color:#1a2e22;line-height:1.6">${t.msg}</div>
+        </div>`).join('');
+}
+
+// Auto-detect on load if possible
+window.addEventListener('load', () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetchWeatherData(pos.coords.latitude, pos.coords.longitude, 'Your Location');
+        });
+    }
+});
+</script>
+{% endblock %}

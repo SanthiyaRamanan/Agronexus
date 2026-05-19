@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}List CRM Machine - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>♻️ List Your CRM Machine</h1>
+    <p>Crop Residue Management machines help neighbouring farmers — earn by sharing yours</p>
+</div>
+<div style="max-width:580px">
+    <div class="card">
+        <form method="POST">
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Machine Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. John Deere Happy Seeder" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">CRM Type *</label>
+                    <select name="crm_type" class="form-control" required>
+                        <option value="">-- Select Type --</option>
+                        <option value="happy_seeder">🌱 Happy Seeder</option>
+                        <option value="super_sms">🔧 Super SMS</option>
+                        <option value="rotavator">⚙️ Rotavator</option>
+                        <option value="baler">📦 Baler</option>
+                        <option value="shrub_master">🌿 Shrub Master</option>
+                        <option value="mulcher">🍂 Mulcher</option>
+                        <option value="zero_till_drill">🌾 Zero Till Drill</option>
+                        <option value="other">🚜 Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Rate per Acre (₹) *</label>
+                    <input type="number" name="rate_per_acre" class="form-control" min="100" step="10" placeholder="e.g. 800" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rate per Hour (₹)</label>
+                    <input type="number" name="rate_per_hr" class="form-control" min="0" step="10" placeholder="e.g. 500 (optional)">
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Your Location *</label>
+                    <input type="text" name="location" class="form-control" placeholder="e.g. Karur, Tamil Nadu" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Suitable Crops</label>
+                    <input type="text" name="suitable_crops" class="form-control" placeholder="e.g. Paddy, Wheat, Maize">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Year of purchase, condition, working width, additional details..."></textarea>
+            </div>
+            <div style="background:#e8f7ef;border-radius:10px;padding:14px;margin-bottom:18px;font-size:13.5px;color:#1a5c38">
+                💡 <strong>Tip:</strong> CRM machines are in high demand during harvest season. Typical rates: Happy Seeder ₹700-1000/acre, Baler ₹500-800/acre, Rotavator ₹400-600/acre.
+            </div>
+            <div style="display:flex;gap:12px">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-upload"></i> List CRM Machine</button>
+                <a href="{{ url_for('crm_machines') }}" class="btn btn-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

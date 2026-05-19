@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Government Dashboard - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🏛️ Government Analytics Dashboard</h1>
+    <p>District-level agricultural data and market insights</p>
+</div>
+
+<div class="grid-4" style="margin-bottom:28px">
+    <div class="stat-card"><div class="stat-value">{{ crop_stats|length }}</div><div class="stat-label">Crop Types Tracked</div><i class="fas fa-seedling stat-icon"></i></div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#1a4a7a,#0d2d52)"><div class="stat-value">{{ location_stats|length }}</div><div class="stat-label">Locations Covered</div><i class="fas fa-map-marker-alt stat-icon"></i></div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#7a4a1a,#523000)"><div class="stat-value">₹0</div><div class="stat-label">Subsidies Disbursed</div><i class="fas fa-rupee-sign stat-icon"></i></div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#4a1a7a,#2d005a)"><div class="stat-value">6</div><div class="stat-label">Active Schemes</div><i class="fas fa-file-alt stat-icon"></i></div>
+</div>
+
+<div class="grid-2" style="margin-bottom:28px">
+    <div class="card">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:18px">📊 Crop-wise Production Data</h3>
+        {% if crop_stats %}
+        <table class="table">
+            <thead><tr><th>Crop</th><th>Total Volume (kg)</th><th>Avg Price (₹/kg)</th><th>Listings</th></tr></thead>
+            <tbody>
+                {% for c in crop_stats %}
+                <tr>
+                    <td><strong>{{ c.crop_name }}</strong></td>
+                    <td>{{ c.total_qty|int }}</td>
+                    <td>₹{{ "%.2f"|format(c.avg_price) }}</td>
+                    <td><span class="badge badge-green">{{ c.listings }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;color:#6b8c76;padding:30px">No data available yet</div>
+        {% endif %}
+    </div>
+    <div class="card">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:16px">🗺️ Location-wise Activity</h3>
+        <canvas id="locationChart" height="250"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:16px">📋 Active Government Schemes Status</h3>
+    <table class="table">
+        <thead><tr><th>Scheme</th><th>Status</th><th>Coverage</th><th>Action</th></tr></thead>
+        <tbody>
+            <tr><td><strong>PM-KISAN</strong></td><td><span class="badge badge-green">Active</span></td><td>All India</td><td><a href="https://pmkisan.gov.in" target="_blank" class="btn btn-secondary btn-sm">View</a></td></tr>
+            <tr><td><strong>PMFBY Crop Insurance</strong></td><td><span class="badge badge-green">Active</span></td><td>All India</td><td><a href="https://pmfby.gov.in" target="_blank" class="btn btn-secondary btn-sm">View</a></td></tr>
+            <tr><td><strong>Kisan Credit Card</strong></td><td><span class="badge badge-green">Active</span></td><td>All Banks</td><td><a href="#" class="btn btn-secondary btn-sm">View</a></td></tr>
+            <tr><td><strong>SMAM Equipment Subsidy</strong></td><td><span class="badge badge-amber">Seasonal</span></td><td>All India</td><td><a href="#" class="btn btn-secondary btn-sm">View</a></td></tr>
+            <tr><td><strong>Soil Health Card</strong></td><td><span class="badge badge-green">Active</span></td><td>All India</td><td><a href="#" class="btn btn-secondary btn-sm">View</a></td></tr>
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+    const locLabels = {{ location_stats | map(attribute='location') | list | tojson }};
+    const locData   = {{ location_stats | map(attribute='listings') | list | tojson }};
+    if (locLabels.length) {
+        new Chart(document.getElementById('locationChart'), {
+            type: 'doughnut',
+            data: {
+                labels: locLabels,
+                datasets: [{ data: locData, backgroundColor: ['#2d9e6b','#4ecb8d','#1a5c38','#f0a500','#065a82','#e05252'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+</script>
+{% endblock %}

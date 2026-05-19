@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Sell Crops - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🌾 List Your Crops for Sale</h1>
+    <p>Reach thousands of buyers directly — no commission, no middlemen</p>
+</div>
+<div style="max-width:640px">
+    <div class="card">
+        <form method="POST">
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Crop Name *</label>
+                    <select name="crop_name" class="form-control" required>
+                        <option value="">-- Select Crop --</option>
+                        {% for crop in ['Tomato','Rice','Wheat','Onion','Potato','Maize','Cotton','Sugarcane','Soybean','Groundnut','Banana','Mango','Chilli','Turmeric','Garlic','Ginger','Mustard','Sunflower','Jowar','Bajra','Arhar','Moong','Urad','Chana','Other'] %}
+                        <option value="{{ crop }}">{{ crop }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quality Grade</label>
+                    <select name="quality_grade" class="form-control">
+                        <option value="A">Grade A — Premium</option>
+                        <option value="B" selected>Grade B — Standard</option>
+                        <option value="C">Grade C — Economy</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Quantity (kg) *</label>
+                    <input type="number" name="quantity_kg" class="form-control" min="1" step="0.5" placeholder="e.g. 500" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price per kg (₹) *</label>
+                    <input type="number" name="price_per_kg" class="form-control" min="0.01" step="0.01" placeholder="e.g. 28.50" required oninput="checkAIPrice()">
+                </div>
+            </div>
+            <!-- AI Price Suggestion -->
+            <div id="aiPriceSuggestion" style="display:none;background:#e8f7ef;border:1px solid #b2e4c8;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13.5px;color:#1a5c38">
+                🤖 <strong>AI Suggests:</strong> <span id="aiPriceText"></span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Harvest Date</label>
+                <input type="date" name="harvest_date" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description (optional)</label>
+                <textarea name="description" class="form-control" rows="4" placeholder="Describe your crop — variety, growing method, storage, etc."></textarea>
+            </div>
+            <div style="display:flex;gap:12px">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane"></i> Post Listing</button>
+                <a href="{{ url_for('marketplace') }}" class="btn btn-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    async function checkAIPrice() {
+        const cropEl = document.querySelector('[name=crop_name]');
+        const crop = cropEl.value;
+        if (!crop) return;
+        const res = await fetch('/api/predict_price', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({crop})});
+        const data = await res.json();
+        document.getElementById('aiPriceText').textContent = `₹${data.predicted_price}/kg (${data.trend}) — Range: ₹${data.predicted_price * 0.88 |0} - ₹${data.predicted_price * 1.12 |0}`;
+        document.getElementById('aiPriceSuggestion').style.display = 'block';
+    }
+    document.querySelector('[name=crop_name]').addEventListener('change', checkAIPrice);
+</script>
+{% endblock %}

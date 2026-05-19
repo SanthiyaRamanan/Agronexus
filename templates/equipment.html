@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Equipment Rental - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1>🚜 Equipment Rental</h1>
+        <p>Rent farm machinery by the hour — tractors, harvesters, sprayers & more</p>
+    </div>
+    <a href="{{ url_for('add_equipment') }}" class="btn btn-primary btn-lg"><i class="fas fa-plus"></i> List Equipment</a>
+</div>
+
+{% if equipments %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px">
+    {% for eq in equipments %}
+    {% set eq_emojis = {'tractor':'🚜','harvester':'🌾','sprayer':'💦','CRM':'♻️','plough':'🔧','seeder':'🌱','other':'⚙️'} %}
+    <div class="card" style="border:1px solid #d4e8da">
+        <div style="background:linear-gradient(135deg,#e8f7ef,#d4f0e4);border-radius:12px;padding:30px;text-align:center;font-size:56px;margin-bottom:16px">
+            {{ eq_emojis.get(eq.eq_type, '⚙️') }}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <h3 style="font-family:'Sora',sans-serif;font-size:17px;font-weight:700">{{ eq.name }}</h3>
+            <span class="badge badge-green">{{ eq.eq_type.title() }}</span>
+        </div>
+        <div style="font-size:22px;font-weight:800;color:#2d9e6b;margin-bottom:8px">₹{{ eq.rate_per_hr }}/hr</div>
+        <div style="font-size:13px;color:#6b8c76;margin-bottom:6px">👤 {{ eq.owner_name }} · 📍 {{ eq.location }}</div>
+        <div style="font-size:13px;color:#6b8c76;margin-bottom:16px">{{ eq.description or '' }}</div>
+        <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;flex:1">
+                <input type="number" id="hours_{{ eq.id }}" placeholder="Hours" min="1" max="24" value="4" class="form-control" style="width:80px;padding:8px">
+                <input type="date" id="date_{{ eq.id }}" class="form-control" style="flex:1;padding:8px">
+            </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="rentEquipment({{ eq.id }}, {{ eq.rate_per_hr }})">
+            <i class="fas fa-key"></i> Rent Now
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:60px">
+    <div style="font-size:60px;margin-bottom:16px">🚜</div>
+    <h3 style="color:#6b8c76">No equipment listed yet</h3>
+    <a href="{{ url_for('add_equipment') }}" class="btn btn-primary" style="margin-top:16px">List First Equipment</a>
+</div>
+{% endif %}
+
+<!-- Rent Modal -->
+<div id="rentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+    <div class="card" style="max-width:400px;width:90%;animation:slideIn 0.3s ease">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:16px">🎉 Rental Confirmed!</h3>
+        <p id="modalMsg" style="color:#6b8c76;margin-bottom:16px"></p>
+        <button class="btn btn-primary" onclick="document.getElementById('rentModal').style.display='none';location.reload()">Done</button>
+    </div>
+</div>
+
+<script>
+    // Set default date to tomorrow
+    document.querySelectorAll('[id^="date_"]').forEach(el => {
+        const d = new Date(); d.setDate(d.getDate() + 1);
+        el.value = d.toISOString().split('T')[0];
+    });
+
+    async function rentEquipment(eqId, ratePerHr) {
+        const hours = document.getElementById('hours_' + eqId).value;
+        const date  = document.getElementById('date_' + eqId).value;
+        if (!hours || !date) return showToast('Enter hours and date', 'error');
+        const fd = new FormData();
+        fd.append('equipment_id', eqId);
+        fd.append('hours', hours);
+        fd.append('rental_date', date);
+        const res = await fetch('/rent_equipment', {method:'POST', body:fd});
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('modalMsg').textContent = data.message;
+            document.getElementById('rentModal').style.display = 'flex';
+        } else {
+            showToast(data.message, 'error');
+        }
+    }
+</script>
+{% endblock %}

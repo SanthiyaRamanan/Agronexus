@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Register - AgroNexus{% endblock %}
+{% block content %}
+<style>
+    .main { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 64px); background: linear-gradient(135deg, #e8f7ef, #f0f7f3); margin-left: 0 !important; padding: 40px 20px; }
+    .auth-card { background: #fff; border-radius: 20px; padding: 44px; width: 100%; max-width: 500px; box-shadow: 0 8px 48px rgba(0,0,0,0.10); border: 1px solid #d4e8da; }
+    .auth-logo { text-align: center; font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 800; color: #1a5c38; margin-bottom: 6px; }
+    .auth-sub { text-align: center; color: #6b8c76; margin-bottom: 32px; font-size: 14px; }
+    .role-select { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+    .role-opt { border: 2px solid #d4e8da; border-radius: 10px; padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .role-opt input { display: none; }
+    .role-opt:hover { border-color: #2d9e6b; }
+    .role-opt.selected { border-color: #2d9e6b; background: #e8f7ef; }
+    .role-opt .emoji { font-size: 24px; margin-bottom: 4px; }
+    .role-opt .label { font-size: 13px; font-weight: 700; color: #1a2e22; }
+    .grid-2-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .auth-footer { text-align: center; margin-top: 20px; font-size: 13.5px; color: #6b8c76; }
+    .auth-footer a { color: #2d9e6b; font-weight: 700; text-decoration: none; }
+</style>
+<div class="main">
+    <div class="auth-card">
+        <div class="auth-logo">🌾 AgroNexus</div>
+        <div class="auth-sub">Create your account and join India's smart agriculture network</div>
+        <form method="POST" id="regForm">
+            <div class="form-group">
+                <label class="form-label">I am a...</label>
+                <div class="role-select">
+                    <label class="role-opt" onclick="selectRole('farmer', this)">
+                        <input type="radio" name="role" value="farmer">
+                        <div class="emoji">👨‍🌾</div>
+                        <div class="label">Farmer</div>
+                    </label>
+                    <label class="role-opt" onclick="selectRole('buyer', this)">
+                        <input type="radio" name="role" value="buyer">
+                        <div class="emoji">🏪</div>
+                        <div class="label">Buyer / Trader</div>
+                    </label>
+                    <label class="role-opt" onclick="selectRole('rental', this)">
+                        <input type="radio" name="role" value="rental">
+                        <div class="emoji">🚜</div>
+                        <div class="label">Equipment Owner</div>
+                    </label>
+                    <label class="role-opt" onclick="selectRole('govt', this)">
+                        <input type="radio" name="role" value="govt">
+                        <div class="emoji">🏛️</div>
+                        <div class="label">Govt / NGO</div>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="name" class="form-control" placeholder="Your full name" required>
+            </div>
+            <div class="grid-2-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" class="form-control" placeholder="10-digit mobile">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Location (District, State)</label>
+                <input type="text" name="location" class="form-control" placeholder="e.g. Coimbatore, Tamil Nadu">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" placeholder="Min 6 characters" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; justify-content:center;">Create Account →</button>
+        </form>
+        <div class="auth-footer">Already have an account? <a href="{{ url_for('login') }}">Login here</a></div>
+    </div>
+</div>
+<script>
+    function selectRole(role, el) {
+        document.querySelectorAll('.role-opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+    }
+    // Pre-select from URL param
+    const urlRole = new URLSearchParams(window.location.search).get('role');
+    if (urlRole) {
+        const el = document.querySelector(`.role-opt input[value="${urlRole}"]`);
+        if (el) selectRole(urlRole, el.parentElement);
+    }
+</script>
+{% endblock %}

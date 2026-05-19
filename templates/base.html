@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}AgroNexus{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --green-900:#0d3320; --green-800:#1a5c38; --green-600:#2d9e6b;
+            --green-400:#4ecb8d; --green-100:#e8f7ef;
+            --amber:#f0a500; --amber-lt:#fff8e6; --red:#e05252;
+            --muted:#6b8c76; --border:#d4e8da; --text:#1a2e22;
+            --bg:#f0f7f3; --card:#ffffff;
+            --sw:260px; --th:60px; --bh:60px;
+        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+        html{scroll-behavior:smooth}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+        a{text-decoration:none;color:inherit}
+
+        /* ── TOPBAR ── */
+        .topbar{position:fixed;top:0;left:0;right:0;height:var(--th);background:var(--green-900);display:flex;align-items:center;padding:0 16px;gap:10px;z-index:1000;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+        .logo{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;white-space:nowrap}
+        .logo span{color:var(--green-400)}
+        .t-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+        /* Hamburger */
+        .hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;cursor:pointer;background:none;border:none;padding:4px;flex-shrink:0}
+        .hamburger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:all .3s;transform-origin:center}
+        .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+        .hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+        .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+        /* Bell */
+        .bell-btn{position:relative;background:rgba(255,255,255,.1);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0}
+        .bell-btn:hover{background:rgba(255,255,255,.2)}
+        .bell-badge{position:absolute;top:3px;right:3px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:10px;padding:0 4px;display:none;align-items:center;justify-content:center;border:2px solid var(--green-900)}
+
+        /* User pill */
+        .upill{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border-radius:30px;padding:5px 12px 5px 5px;color:#fff;font-size:13px;transition:background .2s;white-space:nowrap}
+        .upill:hover{background:rgba(255,255,255,.18)}
+        .uavatar{width:28px;height:28px;border-radius:50%;background:var(--green-600);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+        .uname{display:inline}
+
+        /* Auth btns */
+        .tbtn{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;white-space:nowrap;transition:all .2s}
+        .tbtn-out{background:transparent;border:1.5px solid rgba(255,255,255,.4);color:#fff}
+        .tbtn-out:hover{background:rgba(255,255,255,.1)}
+        .tbtn-fill{background:var(--green-600);color:#fff}
+        .tbtn-fill:hover{background:var(--green-400)}
+
+        /* ── NOTIF DROPDOWN ── */
+        .ndrop{position:fixed;top:var(--th);right:12px;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.16);z-index:1500;display:none;max-height:460px;overflow:hidden;border:1px solid var(--border);flex-direction:column}
+        .ndrop.open{display:flex;animation:slideDown .2s ease}
+        .nhd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+        .nhd h4{font-family:'Sora',sans-serif;font-size:14px;font-weight:700}
+        .nhd span{font-size:12px;color:var(--muted)}
+        .nscroll{overflow-y:auto;flex:1}
+        .nitem{padding:12px 18px;border-bottom:1px solid #f5fbf7;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:background .15s}
+        .nitem:hover{background:#f9fcfa}
+        .nitem.unread{background:#f0f9f5}
+        .nico{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+        .nico.sale{background:#e8f7ef} .nico.bid{background:var(--amber-lt)} .nico.sys{background:#e8f0ff} .nico.wx{background:#e8f4ff} .nico.crm{background:#f0ffe8}
+        .nbody{flex:1;min-width:0}
+        .nbody p{font-size:13px;line-height:1.5}
+        .nbody small{font-size:11px;color:var(--muted)}
+        .ndot{width:8px;height:8px;border-radius:50%;background:var(--green-600);flex-shrink:0;margin-top:5px}
+        .nempty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+        .nfooter{padding:11px 18px;text-align:center;font-size:13px;color:var(--green-600);cursor:pointer;font-weight:600;border-top:1px solid var(--border);flex-shrink:0}
+        .nfooter:hover{background:var(--green-100)}
+
+        /* ── SIDEBAR OVERLAY ── */
+        .sovlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:998;backdrop-filter:blur(2px)}
+        .sovlay.open{display:block}
+
+        /* ── SIDEBAR ── */
+        .sidebar{position:fixed;top:var(--th);left:0;width:var(--sw);height:calc(100vh - var(--th));background:var(--green-900);overflow-y:auto;overflow-x:hidden;z-index:999;transition:transform .3s cubic-bezier(.4,0,.2,1);padding:10px 0 80px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent}
+        .sidebar::-webkit-scrollbar{width:4px}
+        .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+        .nsec{padding:14px 22px 5px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1.5px;text-transform:uppercase}
+        .nlink{display:flex;align-items:center;gap:12px;padding:11px 22px;color:rgba(255,255,255,.7);font-size:14px;font-weight:500;transition:all .18s;border-left:3px solid transparent;position:relative;cursor:pointer}
+        .nlink:hover,.nlink.active{background:rgba(78,203,141,.12);color:var(--green-400);border-left-color:var(--green-400)}
+        .nlink i{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+        .nlink .nbadge{position:absolute;right:16px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;display:none}
+        .ndivider{height:1px;background:rgba(255,255,255,.07);margin:6px 0}
+
+        /* ── BOTTOM NAV ── */
+        .bnav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bh);background:var(--green-900);z-index:997;border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+        .bnav-inner{display:flex;height:100%}
+        .bitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:rgba(255,255,255,.5);font-size:10px;font-weight:600;text-decoration:none;background:none;border:none;cursor:pointer;transition:color .2s;position:relative;padding:4px 2px}
+        .bitem i{font-size:19px}
+        .bitem.active,.bitem:hover{color:var(--green-400)}
+        .bdot{position:absolute;top:7px;right:calc(50% - 16px);width:14px;height:14px;border-radius:50%;background:var(--red);color:#fff;font-size:8px;font-weight:800;display:none;align-items:center;justify-content:center}
+
+        /* ── MAIN ── */
+        .main{margin-left:var(--sw);margin-top:var(--th);padding:24px;min-height:calc(100vh - var(--th))}
+        .main-ns{margin-left:0;margin-top:var(--th);padding:24px}
+
+        /* ── CARDS ── */
+        .card{background:var(--card);border-radius:16px;padding:20px;border:1px solid var(--border);box-shadow:0 2px 16px rgba(0,0,0,.05)}
+        .scard{background:linear-gradient(135deg,var(--green-800),var(--green-900));color:#fff;border-radius:16px;padding:20px;position:relative;overflow:hidden}
+        .scard .si{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:44px;opacity:.12}
+        .scard .sv{font-family:'Sora',sans-serif;font-size:28px;font-weight:800}
+        .scard .sl{font-size:12px;opacity:.72;margin-top:4px}
+
+        /* ── BUTTONS ── */
+        .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;font-family:'DM Sans',sans-serif}
+        .btn-primary{background:var(--green-600);color:#fff}
+        .btn-primary:hover{background:var(--green-800);transform:translateY(-1px);box-shadow:0 4px 14px rgba(45,158,107,.3)}
+        .btn-secondary{background:var(--green-100);color:var(--green-800)}
+        .btn-secondary:hover{background:var(--border)}
+        .btn-amber{background:var(--amber);color:#fff}
+        .btn-amber:hover{background:#d49200}
+        .btn-danger{background:var(--red);color:#fff}
+        .btn-danger:hover{background:#c44040}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+        .btn-sm{padding:7px 13px;font-size:12px;border-radius:8px}
+        .btn-lg{padding:13px 26px;font-size:15px}
+        .btn-block{width:100%;justify-content:center}
+
+        /* ── FORMS ── */
+        .fg{margin-bottom:16px}
+        .fl{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+        .fc{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--text);transition:border-color .2s,box-shadow .2s;outline:none;-webkit-appearance:none;appearance:none}
+        .fc:focus{border-color:var(--green-600);box-shadow:0 0 0 3px rgba(45,158,107,.12)}
+        select.fc{cursor:pointer}
+        textarea.fc{resize:vertical;min-height:90px}
+        /* Keep old class names working too */
+        .form-group{margin-bottom:16px}
+        .form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+        .form-control{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--text);transition:border-color .2s,box-shadow .2s;outline:none;-webkit-appearance:none;appearance:none}
+        .form-control:focus{border-color:var(--green-600);box-shadow:0 0 0 3px rgba(45,158,107,.12)}
+        select.form-control{cursor:pointer}
+        textarea.form-control{resize:vertical;min-height:90px}
+
+        /* ── GRID ── */
+        .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+        .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+        .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+
+        /* ── BADGES ── */
+        .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+        .badge-green{background:var(--green-100);color:var(--green-800)}
+        .badge-amber{background:var(--amber-lt);color:#8a6000}
+        .badge-red{background:#fde8e8;color:var(--red)}
+        .badge-blue{background:#e8f0ff;color:#1a3a80}
+        .badge-grade-a{background:#d4f5e4;color:#1a6b43}
+        .badge-grade-b{background:var(--amber-lt);color:#8a5f00}
+        .badge-grade-c{background:#fde8e8;color:var(--red)}
+
+        /* ── LISTING CARD ── */
+        .lcard{background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:transform .2s,box-shadow .2s;display:block;color:inherit}
+        .lcard:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.1)}
+        .lch{background:linear-gradient(135deg,#e8f7ef,#d4f0e4);padding:20px;text-align:center}
+        .lce{font-size:46px}
+        .lcb{padding:14px}
+        .lct{font-family:'Sora',sans-serif;font-size:15px;font-weight:700}
+        .lcp{font-size:20px;font-weight:800;color:var(--green-600);margin:3px 0}
+        .lcm{font-size:12px;color:var(--muted)}
+
+        /* ── TABLE ── */
+        .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+        .table{width:100%;border-collapse:collapse;min-width:500px}
+        .table th{background:var(--green-100);color:var(--green-800);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:12px 14px;text-align:left;white-space:nowrap}
+        .table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px}
+        .table tr:last-child td{border-bottom:none}
+        .table tr:hover td{background:#f9fcfa}
+
+        /* ── ALERTS ── */
+        .alert{padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:14px;font-weight:500}
+        .alert-success{background:var(--green-100);color:var(--green-800);border:1px solid #b2e4c8}
+        .alert-danger{background:#fde8e8;color:var(--red);border:1px solid #f5c2c2}
+        .alert-warning{background:var(--amber-lt);color:#7a5000;border:1px solid #f0d080}
+
+        /* ── PAGE HEADER ── */
+        .page-header{margin-bottom:22px}
+        .page-header h1{font-family:'Sora',sans-serif;font-size:22px;font-weight:800}
+        .page-header p{color:var(--muted);margin-top:4px;font-size:14px}
+
+        /* ── TOAST ── */
+        #tc{position:fixed;top:72px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+        .toast{background:#fff;border-radius:12px;padding:12px 16px;min-width:260px;max-width:calc(100vw - 28px);box-shadow:0 4px 24px rgba(0,0,0,.14);border-left:4px solid var(--green-600);display:flex;align-items:flex-start;gap:10px;animation:slideInRight .3s ease;pointer-events:all;font-size:13.5px}
+        .toast.error{border-left-color:var(--red)}
+        .toast.warning{border-left-color:var(--amber)}
+        .toast.info{border-left-color:#4a90e2}
+        .ti{font-size:18px;flex-shrink:0;margin-top:1px}
+        .tb{flex:1}
+        .tt{font-weight:700;font-size:13px;margin-bottom:2px}
+        .tm{color:var(--muted);font-size:12px}
+
+        /* ── CHATBOT ── */
+        #cfab{position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--green-600);color:#fff;font-size:20px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:990;box-shadow:0 4px 20px rgba(45,158,107,.4);transition:transform .2s,box-shadow .2s}
+        #cfab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(45,158,107,.5)}
+        #cwin{position:fixed;bottom:144px;right:16px;width:320px;max-width:calc(100vw - 32px);max-height:460px;background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.15);z-index:989;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border)}
+        #cwin.open{display:flex;animation:slideUp .3s ease}
+        .chdr{background:var(--green-800);color:#fff;padding:13px 16px;font-weight:700;font-family:'Sora',sans-serif;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+        .cclose{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.8;line-height:1}
+        .cmsgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;max-height:280px}
+        .cm{max-width:84%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.5}
+        .cm.bot{background:var(--green-100);align-self:flex-start;border-bottom-left-radius:4px}
+        .cm.user{background:var(--green-600);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+        .ctyping{padding:8px 14px;background:var(--green-100);border-radius:14px;align-self:flex-start;font-size:12px;color:var(--muted);display:none;margin:0 14px 8px}
+        .crow{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0}
+        .cinput{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;transition:border-color .2s}
+        .cinput:focus{border-color:var(--green-600)}
+        .csend{background:var(--green-600);color:#fff;border:none;border-radius:9px;padding:9px 13px;cursor:pointer;font-size:14px}
+        .csend:hover{background:var(--green-800)}
+
+        /* ── ANIMATIONS ── */
+        @keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+
+        /* ══ TABLET (≤1024px) ══ */
+        @media(max-width:1024px){
+            .grid-4{grid-template-columns:repeat(2,1fr)}
+            .grid-3{grid-template-columns:repeat(2,1fr)}
+        }
+
+        /* ══ MOBILE (≤768px) ══ */
+        @media(max-width:768px){
+            .sidebar{transform:translateX(-100%);z-index:999}
+            .sidebar.open{transform:translateX(0);box-shadow:4px 0 40px rgba(0,0,0,.25)}
+            .hamburger{display:flex}
+            .uname{display:none}
+            .main{margin-left:0!important;padding:14px 12px calc(var(--bh) + 16px)}
+            .bnav{display:block}
+            #cfab{bottom:calc(var(--bh) + 14px);right:14px}
+            #cwin{bottom:calc(var(--bh) + 70px);width:calc(100vw - 20px);right:10px}
+            .ndrop{right:0;left:0;width:100%;border-radius:0 0 16px 16px}
+            .grid-4{grid-template-columns:1fr 1fr;gap:10px}
+            .grid-3{grid-template-columns:1fr 1fr;gap:10px}
+            .grid-2{grid-template-columns:1fr;gap:10px}
+            #tc{right:8px;left:8px}
+            .toast{min-width:unset}
+            .page-header{margin-bottom:16px}
+            .page-header h1{font-size:19px}
+            .card{padding:14px;border-radius:12px}
+            .scard .sv{font-size:22px!important}
+            .scard .si{font-size:32px!important}
+        }
+        @media(max-width:480px){
+            .grid-4{grid-template-columns:1fr 1fr}
+            .scard{padding:14px}
+            .scard .sv{font-size:20px!important}
+            .btn-lg{padding:11px 18px;font-size:14px}
+            .logo{font-size:18px}
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+    {% if session.get('user_id') %}
+    <button class="hamburger" id="hbtn" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    {% endif %}
+    <a href="{{ url_for('index') }}" class="logo">🌾 Agro<span>Nexus</span></a>
+    <div class="t-right">
+        {% if session.get('user_id') %}
+        <button class="bell-btn" id="bellBtn" onclick="toggleNotif()" aria-label="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="bell-badge" id="bellBadge">0</span>
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="upill">
+            <div class="uavatar">{{ session.user_name[0].upper() }}</div>
+            <span class="uname">{{ session.user_name.split()[0] }}</span>
+        </a>
+        {% else %}
+        <a href="{{ url_for('login') }}"    class="tbtn tbtn-out">Login</a>
+        <a href="{{ url_for('register') }}" class="tbtn tbtn-fill">Register</a>
+        {% endif %}
+    </div>
+</header>
+
+<!-- NOTIFICATION DROPDOWN -->
+{% if session.get('user_id') %}
+<div class="ndrop" id="ndrop">
+    <div class="nhd">
+        <h4>🔔 Notifications</h4>
+        <span id="nutxt"></span>
+    </div>
+    <div class="nscroll" id="nlist"><div class="nempty">Loading…</div></div>
+    <div class="nfooter" onclick="markAllRead()">✓ Mark all as read</div>
+</div>
+{% endif %}
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sovlay" id="sovlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+{% if session.get('user_id') %}
+<nav class="sidebar" id="sidebar">
+    <div class="nsec">Main</div>
+    <a href="{{ url_for('dashboard') }}"   class="nlink {% if request.endpoint=='dashboard'  %}active{% endif %}"><i class="fas fa-th-large"></i>Dashboard</a>
+    <a href="{{ url_for('marketplace') }}" class="nlink {% if 'marketplace' in (request.endpoint or '') %}active{% endif %}"><i class="fas fa-store"></i>Marketplace</a>
+    <a href="{{ url_for('add_listing') }}" class="nlink {% if request.endpoint=='add_listing' %}active{% endif %}"><i class="fas fa-plus-circle"></i>Sell Crops</a>
+
+    <div class="ndivider"></div>
+    <div class="nsec">Equipment</div>
+    <a href="{{ url_for('equipment') }}"     class="nlink {% if request.endpoint=='equipment'     %}active{% endif %}"><i class="fas fa-tractor"></i>Rent Equipment</a>
+    <a href="{{ url_for('add_equipment') }}" class="nlink {% if request.endpoint=='add_equipment' %}active{% endif %}"><i class="fas fa-tools"></i>List Equipment</a>
+    <a href="{{ url_for('crm_machines') }}"  class="nlink {% if request.endpoint=='crm_machines'  %}active{% endif %}"><i class="fas fa-recycle"></i>CRM Machines</a>
+
+    <div class="ndivider"></div>
+    <div class="nsec">AI & Maps</div>
+    <a href="{{ url_for('ai_tools') }}"     class="nlink {% if request.endpoint=='ai_tools'     %}active{% endif %}"><i class="fas fa-robot"></i>AI Advisory</a>
+    <a href="{{ url_for('distance_map') }}" class="nlink {% if request.endpoint=='distance_map' %}active{% endif %}"><i class="fas fa-map-marked-alt"></i>Distance Map</a>
+    <a href="{{ url_for('weather_page') }}" class="nlink {% if request.endpoint=='weather_page' %}active{% endif %}"><i class="fas fa-cloud-sun"></i>Live Weather</a>
+
+    <div class="ndivider"></div>
+    <div class="nsec">Account</div>
+    <a href="{{ url_for('my_listings') }}"        class="nlink {% if request.endpoint=='my_listings'        %}active{% endif %}"><i class="fas fa-list-alt"></i>My Activity</a>
+    <a href="{{ url_for('notifications_page') }}" class="nlink {% if request.endpoint=='notifications_page' %}active{% endif %}">
+        <i class="fas fa-bell"></i>Notifications
+        <span class="nbadge" id="sbadge">0</span>
+    </a>
+    {% if session.get('user_role') == 'govt' %}
+    <a href="{{ url_for('govt_dashboard') }}" class="nlink {% if request.endpoint=='govt_dashboard' %}active{% endif %}"><i class="fas fa-chart-bar"></i>Govt Dashboard</a>
+    {% endif %}
+    <div class="ndivider"></div>
+    <a href="{{ url_for('logout') }}" class="nlink" style="color:rgba(255,120,120,.85);margin-top:4px"><i class="fas fa-sign-out-alt"></i>Logout</a>
+</nav>
+{% endif %}
+
+<!-- MAIN -->
+<main class="{% if session.get('user_id') %}main{% else %}main-ns{% endif %}">
+    <div id="tc"></div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+
+<!-- BOTTOM NAV (mobile only) -->
+{% if session.get('user_id') %}
+<nav class="bnav">
+    <div class="bnav-inner">
+        <a href="{{ url_for('dashboard') }}"   class="bitem {% if request.endpoint=='dashboard'  %}active{% endif %}"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="{{ url_for('marketplace') }}" class="bitem {% if 'marketplace' in (request.endpoint or '') %}active{% endif %}"><i class="fas fa-store"></i><span>Market</span></a>
+        <a href="{{ url_for('equipment') }}"   class="bitem {% if request.endpoint=='equipment'   %}active{% endif %}"><i class="fas fa-tractor"></i><span>Rent</span></a>
+        <a href="{{ url_for('ai_tools') }}"    class="bitem {% if request.endpoint=='ai_tools'    %}active{% endif %}"><i class="fas fa-robot"></i><span>AI</span></a>
+        <button class="bitem" onclick="toggleNotif()">
+            <i class="fas fa-bell"></i><span>Alerts</span>
+            <span class="bdot" id="bdot">0</span>
+        </button>
+    </div>
+</nav>
+
+<!-- CHATBOT FAB -->
+<button id="cfab" onclick="toggleChat()" aria-label="Open chatbot"><i class="fas fa-comment-dots"></i></button>
+<div id="cwin">
+    <div class="chdr">
+        🌾 AgroBot
+        <button class="cclose" onclick="toggleChat()">×</button>
+    </div>
+    <div class="cmsgs" id="cmsgs">
+        <div class="cm bot">Hi {{ session.user_name.split()[0] }}! 👋 Ask me about crop prices, schemes, pests, weather or equipment!</div>
+    </div>
+    <div class="ctyping" id="ctyping">AgroBot is typing…</div>
+    <div class="crow">
+        <input class="cinput" id="cinput" placeholder="Ask a farming question…" onkeydown="if(event.key==='Enter')sendMsg()">
+        <button class="csend" onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+{% endif %}
+
+<script>
+/* ── Sidebar ───────────────────────────────────────────────── */
+function toggleSidebar(){
+    const s=document.getElementById('sidebar'),o=document.getElementById('sovlay'),h=document.getElementById('hbtn');
+    if(!s)return;
+    s.classList.toggle('open');o.classList.toggle('open');h&&h.classList.toggle('open');
+}
+function closeSidebar(){
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sovlay')?.classList.remove('open');
+    document.getElementById('hbtn')?.classList.remove('open');
+}
+document.querySelectorAll('.nlink').forEach(l=>l.addEventListener('click',()=>{if(window.innerWidth<=768)closeSidebar();}));
+
+/* ── Toast ─────────────────────────────────────────────────── */
+function showToast(title,msg='',type='success'){
+    const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+    const el=document.createElement('div');
+    el.className=`toast ${type}`;
+    el.innerHTML=`<span class="ti">${icons[type]||'📢'}</span><div class="tb"><div class="tt">${title}</div>${msg?`<div class="tm">${msg}</div>`:''}</div>`;
+    document.getElementById('tc').appendChild(el);
+    setTimeout(()=>{el.style.cssText+='opacity:0;transform:translateX(24px);transition:all .3s';setTimeout(()=>el.remove(),320);},3500);
+}
+
+/* ── Notifications ─────────────────────────────────────────── */
+function toggleNotif(){
+    const d=document.getElementById('ndrop');
+    if(!d)return;
+    d.classList.toggle('open');
+    if(d.classList.contains('open'))loadNotifs();
+}
+document.addEventListener('click',e=>{
+    const d=document.getElementById('ndrop'),b=document.getElementById('bellBtn');
+    if(d&&!d.contains(e.target)&&b&&!b.contains(e.target))d.classList.remove('open');
+});
+
+async function loadNotifs(){
+    try{
+        const r=await fetch('/api/notifications');
+        const data=await r.json();
+        const all=data.notifications||[];
+        const unread=all.filter(n=>!n.is_read).length;
+        setBadges(unread);
+        const list=document.getElementById('nlist');
+        if(!all.length){list.innerHTML='<div class="nempty">🎉 No notifications yet!</div>';return;}
+        const ti={bid:'🔨',sale:'💳',scheme:'🏛️',system:'⚙️',weather:'🌦️',crm:'♻️'};
+        const tc2={bid:'bid',sale:'sale',scheme:'sys',system:'sys',weather:'wx',crm:'crm'};
+        list.innerHTML=all.slice(0,20).map(n=>`
+            <div class="nitem ${n.is_read?'':'unread'}" onclick="markRead(${n.id},this)">
+                <div class="nico ${tc2[n.type]||'sys'}">${ti[n.type]||'📢'}</div>
+                <div class="nbody"><p>${n.message}</p><small>${timeAgo(n.created_at)}</small></div>
+                ${!n.is_read?'<div class="ndot"></div>':''}
+            </div>`).join('');
+    }catch(e){document.getElementById('nlist').innerHTML='<div class="nempty">Could not load notifications.</div>';}
+}
+function setBadges(count){
+    const txt=count>9?'9+':String(count);const show=count>0;
+    const ids=['bellBadge','sbadge','bdot'];
+    ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.style.display=show?'flex':'none';});
+    const ut=document.getElementById('nutxt');if(ut)ut.textContent=show?`${count} unread`:'All caught up!';
+}
+async function markRead(id,el){
+    el.classList.remove('unread');el.querySelector('.ndot')?.remove();
+    await fetch(`/api/notifications/${id}/read`,{method:'POST'});loadNotifs();
+}
+async function markAllRead(){
+    await fetch('/api/notifications/read_all',{method:'POST'});
+    document.getElementById('ndrop')?.classList.remove('open');loadNotifs();
+}
+function timeAgo(s){
+    if(!s)return'';
+    const d=Math.floor((Date.now()-new Date(s))/1000);
+    if(d<60)return'just now';if(d<3600)return`${Math.floor(d/60)}m ago`;
+    if(d<86400)return`${Math.floor(d/3600)}h ago`;return`${Math.floor(d/86400)}d ago`;
+}
+{% if session.get('user_id') %}
+window.addEventListener('load',()=>{loadNotifs();setInterval(loadNotifs,30000);});
+{% endif %}
+
+/* ── Chatbot ───────────────────────────────────────────────── */
+function toggleChat(){document.getElementById('cwin')?.classList.toggle('open');}
+async function sendMsg(){
+    const inp=document.getElementById('cinput'),txt=inp.value.trim();
+    if(!txt)return;
+    const msgs=document.getElementById('cmsgs');
+    msgs.innerHTML+=`<div class="cm user">${txt}</div>`;
+    inp.value='';msgs.scrollTop=msgs.scrollHeight;
+    const typ=document.getElementById('ctyping');typ.style.display='block';msgs.scrollTop=msgs.scrollHeight;
+    try{
+        const res=await fetch('/api/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:txt})});
+        const data=await res.json();
+        typ.style.display='none';
+        msgs.innerHTML+=`<div class="cm bot">${(data.response||'').replace(/\n/g,'<br>')}</div>`;
+    }catch(e){typ.style.display='none';msgs.innerHTML+=`<div class="cm bot">Sorry, connection error. Try again!</div>`;}
+    msgs.scrollTop=msgs.scrollHeight;
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

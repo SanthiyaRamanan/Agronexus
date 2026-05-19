@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ listing.crop_name }} - AgroNexus{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px"><a href="{{ url_for('marketplace') }}" style="color:#2d9e6b;text-decoration:none;font-weight:600">← Back to Marketplace</a></div>
+
+<div class="grid-2">
+    <div>
+        <div class="card" style="margin-bottom:20px">
+            <div style="background:linear-gradient(135deg,#e8f7ef,#d4f0e4);border-radius:12px;padding:40px;text-align:center;margin-bottom:20px;font-size:80px">
+                🌾
+            </div>
+            <h1 style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800">{{ listing.crop_name }}</h1>
+            <div style="font-size:32px;font-weight:800;color:#2d9e6b;margin:8px 0">₹{{ listing.price_per_kg }}/kg</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+                <span class="badge badge-grade-{{ listing.quality_grade.lower() }}">Grade {{ listing.quality_grade }}</span>
+                <span class="badge badge-green">{{ listing.status.title() }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+                <div style="background:#f9fcfa;border-radius:10px;padding:14px">
+                    <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase;margin-bottom:4px">Quantity</div>
+                    <div style="font-weight:700">{{ listing.quantity_kg }} kg</div>
+                </div>
+                <div style="background:#f9fcfa;border-radius:10px;padding:14px">
+                    <div style="font-size:11px;color:#6b8c76;font-weight:700;text-transform:uppercase;margin-bottom:4px">Harvest Date</div>
+                    <div style="font-weight:700">{{ listing.harvest_date or 'Not set' }}</div>
+                </div>
+            </div>
+            {% if listing.description %}
+            <p style="color:#6b8c76;font-size:14px;line-height:1.7">{{ listing.description }}</p>
+            {% endif %}
+        </div>
+
+        <!-- AI Price Prediction -->
+        {% if predicted_price %}
+        <div class="card" style="background:linear-gradient(135deg,#1a5c38,#0d3320);color:#fff;margin-bottom:20px">
+            <h3 style="font-family:'Sora',sans-serif;margin-bottom:14px">🤖 AI Price Prediction</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:14px;text-align:center">
+                    <div style="font-size:10px;opacity:0.7;text-transform:uppercase">Current</div>
+                    <div style="font-size:20px;font-weight:800">₹{{ predicted_price.current_price }}</div>
+                </div>
+                <div style="background:rgba(78,203,141,0.2);border-radius:10px;padding:14px;text-align:center">
+                    <div style="font-size:10px;opacity:0.7;text-transform:uppercase">Predicted</div>
+                    <div style="font-size:20px;font-weight:800;color:#4ecb8d">₹{{ predicted_price.predicted_price }}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:14px;text-align:center">
+                    <div style="font-size:10px;opacity:0.7;text-transform:uppercase">Trend</div>
+                    <div style="font-size:20px">{% if predicted_price.trend == 'rising' %}📈{% else %}📉{% endif %}</div>
+                    <div style="font-size:11px;color:#4ecb8d">{{ predicted_price.trend.title() }}</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;font-size:12px;opacity:0.6">Confidence: {{ predicted_price.confidence }}% · 7-day forecast</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <!-- Farmer Info -->
+        <div class="card" style="margin-bottom:20px">
+            <h3 style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px">👨‍🌾 Farmer Details</h3>
+            <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
+                <div style="width:54px;height:54px;background:#e8f7ef;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:800;font-size:20px;color:#1a5c38">{{ listing.farmer_name[0] }}</div>
+                <div>
+                    <div style="font-weight:700">{{ listing.farmer_name }}</div>
+                    <div style="color:#6b8c76;font-size:13px">📍 {{ listing.location }}</div>
+                    <div style="color:#6b8c76;font-size:13px">📞 {{ listing.phone }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buy Now -->
+        {% if session.get('user_id') and session.get('user_id') != listing.user_id %}
+        <div class="card" style="margin-bottom:20px">
+            <h3 style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px">💳 Buy Now</h3>
+            <div class="form-group">
+                <label class="form-label">Quantity to buy (kg)</label>
+                <input type="number" id="buyQty" class="form-control" min="1" max="{{ listing.quantity_kg }}" value="10" oninput="updateTotal()">
+            </div>
+            <div style="background:#f0f7f3;border-radius:10px;padding:14px;margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;font-size:14px;color:#6b8c76;margin-bottom:4px">
+                    <span>Price per kg</span><span>₹{{ listing.price_per_kg }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-weight:800;font-size:18px;color:#1a5c38">
+                    <span>Total</span><span id="totalAmt">₹{{ listing.price_per_kg * 10 }}</span>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" onclick="buyNow()">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </div>
+
+        <!-- Bid -->
+        <div class="card" style="margin-bottom:20px">
+            <h3 style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px">🔨 Place a Bid</h3>
+            <div class="form-group">
+                <label class="form-label">Your bid (₹/kg)</label>
+                <input type="number" id="bidAmt" class="form-control" placeholder="e.g. 26.50" step="0.5">
+            </div>
+            <button class="btn btn-amber" style="width:100%;justify-content:center" onclick="placeBid()">
+                <i class="fas fa-gavel"></i> Place Bid
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Bids -->
+        {% if bids %}
+        <div class="card">
+            <h3 style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px">📋 Active Bids ({{ bids|length }})</h3>
+            {% for bid in bids %}
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #d4e8da;font-size:14px">
+                <span style="font-weight:600">{{ bid.buyer_name }}</span>
+                <span style="color:#2d9e6b;font-weight:800">₹{{ bid.amount }}/kg</span>
+                <span class="badge badge-{{ 'green' if bid.status=='accepted' else 'amber' }}">{{ bid.status.title() }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const pricePerKg = {{ listing.price_per_kg }};
+    function updateTotal() {
+        const qty = parseFloat(document.getElementById('buyQty').value) || 0;
+        document.getElementById('totalAmt').textContent = '₹' + (qty * pricePerKg).toFixed(2);
+    }
+    async function buyNow() {
+        const qty = document.getElementById('buyQty').value;
+        const fd = new FormData();
+        fd.append('listing_id', '{{ listing.id }}');
+        fd.append('quantity', qty);
+        const res = await fetch('/buy_now', { method: 'POST', body: fd });
+        const data = await res.json();
+        showToast(data.message, data.success ? 'success' : 'error');
+        if (data.success) setTimeout(() => location.reload(), 1500);
+    }
+    async function placeBid() {
+        const amt = document.getElementById('bidAmt').value;
+        if (!amt) return showToast('Enter bid amount', 'error');
+        const fd = new FormData();
+        fd.append('listing_id', '{{ listing.id }}');
+        fd.append('amount', amt);
+        const res = await fetch('/place_bid', { method: 'POST', body: fd });
+        const data = await res.json();
+        showToast(data.message, data.success ? 'success' : 'error');
+        if (data.success) setTimeout(() => location.reload(), 1500);
+    }
+</script>
+{% endblock %}

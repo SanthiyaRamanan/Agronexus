@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}My Listings - AgroNexus{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📋 My Activity</h1>
+    <p>Your crop listings and transaction history</p>
+</div>
+
+<div class="card" style="margin-bottom:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h3 style="font-family:'Sora',sans-serif;font-weight:700">🌾 My Crop Listings ({{ listings|length }})</h3>
+        <a href="{{ url_for('add_listing') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add Listing</a>
+    </div>
+    {% if listings %}
+    <div style="overflow-x:auto">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Crop</th><th>Qty (kg)</th><th>Price/kg</th><th>Grade</th><th>Harvest Date</th><th>Status</th><th>Listed On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in listings %}
+                <tr>
+                    <td><strong>{{ l.crop_name }}</strong></td>
+                    <td>{{ l.quantity_kg }}</td>
+                    <td style="color:#2d9e6b;font-weight:700">₹{{ l.price_per_kg }}</td>
+                    <td><span class="badge badge-grade-{{ l.quality_grade.lower() }}">Grade {{ l.quality_grade }}</span></td>
+                    <td>{{ l.harvest_date or '-' }}</td>
+                    <td><span class="badge badge-{{ 'green' if l.status=='active' else 'amber' }}">{{ l.status.title() }}</span></td>
+                    <td style="font-size:12px;color:#6b8c76">{{ l.created_at.strftime('%d %b %Y') if l.created_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:#6b8c76">
+        No listings yet. <a href="{{ url_for('add_listing') }}" style="color:#2d9e6b;font-weight:700">Add your first listing!</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3 style="font-family:'Sora',sans-serif;font-weight:700;margin-bottom:18px">💳 Transaction History ({{ transactions|length }})</h3>
+    {% if transactions %}
+    <div style="overflow-x:auto">
+        <table class="table">
+            <thead>
+                <tr><th>Crop</th><th>Qty</th><th>Total Amount</th><th>Role</th><th>Status</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td><strong>{{ t.crop_name }}</strong></td>
+                    <td>{{ t.quantity_kg }} kg</td>
+                    <td style="font-weight:700">₹{{ t.total_amount }}</td>
+                    <td><span class="badge badge-{{ 'green' if t.buyer_id == session.user_id else 'amber' }}">{{ 'Buyer' if t.buyer_id == session.user_id else 'Seller' }}</span></td>
+                    <td><span class="badge badge-green">{{ t.status.title() }}</span></td>
+                    <td style="font-size:12px;color:#6b8c76">{{ t.created_at.strftime('%d %b %Y') if t.created_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:#6b8c76">No transactions yet.</div>
+    {% endif %}
+</div>
+{% endblock %}
