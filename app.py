@@ -8,7 +8,7 @@ app.secret_key = 'agri_secret_key_2024'
 
 app.config['MYSQL_HOST']        = 'localhost'
 app.config['MYSQL_USER']        = 'root'
-app.config['MYSQL_PASSWORD']    = 'Santhiya@05'   # ← change this
+app.config['MYSQL_PASSWORD']    = 'Your Password'   # ← change this
 app.config['MYSQL_DB']          = 'agri_platform'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 mysql = MySQL(app)
